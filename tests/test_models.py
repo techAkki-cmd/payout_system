@@ -42,6 +42,7 @@ def test_enum_and_default_configuration() -> None:
     assert {item.value for item in SaleStatus} == {"PENDING", "APPROVED", "REJECTED"}
     assert {item.value for item in TransactionType} == {
         "ADVANCE_PAYOUT",
+        "FINAL_PAYOUT",
         "RECONCILIATION_ADJUSTMENT",
         "WITHDRAWAL",
         "FAILED_RECOVERY",
