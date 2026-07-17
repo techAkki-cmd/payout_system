@@ -27,6 +27,7 @@ docker compose up --build
 ```
 
 The `web` service waits for the PostgreSQL healthcheck before starting.
+PostgreSQL is exposed on host port `5433` to avoid colliding with a local database.
 
 ## Health Check
 

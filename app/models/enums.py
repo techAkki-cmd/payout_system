@@ -1,0 +1,20 @@
+from enum import StrEnum
+
+
+class SaleStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+
+
+class TransactionType(StrEnum):
+    ADVANCE_PAYOUT = "ADVANCE_PAYOUT"
+    RECONCILIATION_ADJUSTMENT = "RECONCILIATION_ADJUSTMENT"
+    WITHDRAWAL = "WITHDRAWAL"
+    FAILED_RECOVERY = "FAILED_RECOVERY"
+
+
+class TransactionStatus(StrEnum):
+    INITIATED = "INITIATED"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
