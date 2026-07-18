@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from app.models import Transaction, TransactionStatus, TransactionType, User
@@ -26,8 +27,8 @@ def withdraw(
                 detail="Withdrawal amount must be positive.",
             )
 
-        # Locking the user row prevents concurrent requests from spending the same balance twice.
-        user = session.scalar(select(User).where(User.id == user_id).with_for_update())
+        # `nowait` fails fast if another request is already mutating this wallet.
+        user = session.scalar(select(User).where(User.id == user_id).with_for_update(nowait=True))
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
@@ -62,6 +63,27 @@ def withdraw(
         session.commit()
         session.refresh(transaction)
         return transaction
+    except DBAPIError as exc:
+        session.rollback()
+        if is_lock_error(exc):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="User wallet is busy; retry shortly.",
+            ) from exc
+        raise
     except Exception:
         session.rollback()
         raise
+
+
+def is_lock_error(exc: DBAPIError) -> bool:
+    original = str(exc.orig).lower() if getattr(exc, "orig", None) is not None else str(exc).lower()
+    return any(
+        marker in original
+        for marker in (
+            "could not obtain lock",
+            "lock not available",
+            "database is locked",
+            "nowait",
+        )
+    )

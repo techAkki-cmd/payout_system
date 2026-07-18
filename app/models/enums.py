@@ -19,3 +19,5 @@ class TransactionStatus(StrEnum):
     INITIATED = "INITIATED"
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    REJECTED = "REJECTED"

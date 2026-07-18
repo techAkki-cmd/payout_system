@@ -47,7 +47,13 @@ def test_enum_and_default_configuration() -> None:
         "WITHDRAWAL",
         "FAILED_RECOVERY",
     }
-    assert {item.value for item in TransactionStatus} == {"INITIATED", "SUCCESS", "FAILED"}
+    assert {item.value for item in TransactionStatus} == {
+        "INITIATED",
+        "SUCCESS",
+        "FAILED",
+        "CANCELLED",
+        "REJECTED",
+    }
 
 
 def test_sales_worker_indexes_exist() -> None:

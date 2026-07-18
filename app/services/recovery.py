@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.models import Transaction, TransactionStatus, TransactionType, User
 
+RECOVERY_REFERENCE_PREFIX = "failed_recovery"
+
 
 def recover_failed_withdrawal(session: Session, transaction_id: uuid.UUID) -> Transaction:
     try:
@@ -22,10 +24,25 @@ def recover_failed_withdrawal(session: Session, transaction_id: uuid.UUID) -> Tr
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Only withdrawal transactions can be recovered.",
             )
-        if transaction.status == TransactionStatus.FAILED:
+        if transaction.status not in {
+            TransactionStatus.FAILED,
+            TransactionStatus.CANCELLED,
+            TransactionStatus.REJECTED,
+            TransactionStatus.INITIATED,
+        }:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Withdrawal transaction has already failed.",
+                detail="Withdrawal transaction is not eligible for recovery.",
+            )
+
+        recovery_reference_id = build_recovery_reference_id(transaction.id)
+        existing_recovery = session.scalar(
+            select(Transaction).where(Transaction.reference_id == recovery_reference_id)
+        )
+        if existing_recovery is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Withdrawal transaction has already been recovered.",
             )
 
         # Locking the user row keeps recovery credits serialized with withdrawals.
@@ -43,7 +60,7 @@ def recover_failed_withdrawal(session: Session, transaction_id: uuid.UUID) -> Tr
             type=TransactionType.FAILED_RECOVERY,
             amount=recovery_amount,
             status=TransactionStatus.SUCCESS,
-            reference_id=f"failed_recovery:{transaction.id}",
+            reference_id=recovery_reference_id,
         )
         session.add(recovery)
         session.commit()
@@ -52,3 +69,7 @@ def recover_failed_withdrawal(session: Session, transaction_id: uuid.UUID) -> Tr
     except Exception:
         session.rollback()
         raise
+
+
+def build_recovery_reference_id(transaction_id: uuid.UUID) -> str:
+    return f"{RECOVERY_REFERENCE_PREFIX}:{transaction_id}"
