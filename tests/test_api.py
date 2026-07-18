@@ -13,13 +13,13 @@ def test_dashboard_html_is_served(client: TestClient) -> None:
 
     # Assert
     assert response.status_code == 200
-    assert "User Payout Management" in response.text
-    assert "Execute Advance Payout Job" in response.text
+    assert "Creator Payout Operations Console" in response.text
+    assert "Run 10% Advance Payout Worker" in response.text
 
 
 def test_create_and_fetch_demo_user(client: TestClient) -> None:
     # Arrange
-    payload = {"username": "creator-alpha"}
+    payload = {"username": "mumbai_creator"}
 
     # Act
     create_response = client.post("/api/v1/users/", json=payload)
