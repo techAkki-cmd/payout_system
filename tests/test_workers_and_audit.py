@@ -133,6 +133,34 @@ def test_audit_passes_when_ledger_matches_wallet(
     assert validate_user_wallet_integrity(db_session, user.id) is True
 
 
+def test_audit_passes_after_failed_withdrawal_recovery(
+    db_session: Session,
+    user_factory: UserFactory,
+    transaction_factory: TransactionFactory,
+) -> None:
+    # Arrange
+    user = user_factory(username="merchant", balance=Decimal("100.00"))
+    transaction_factory(
+        user=user,
+        amount=Decimal("100.00"),
+        transaction_type=TransactionType.FINAL_PAYOUT,
+        status=TransactionStatus.SUCCESS,
+    )
+    withdrawal = transaction_factory(
+        user=user,
+        amount=Decimal("-50.00"),
+        transaction_type=TransactionType.WITHDRAWAL,
+        status=TransactionStatus.INITIATED,
+    )
+    user.withdrawable_balance = Decimal("50.00")
+    db_session.commit()
+
+    recover_failed_withdrawal(db_session, withdrawal.id)
+
+    # Act / Assert
+    assert validate_user_wallet_integrity(db_session, user.id) is True
+
+
 def test_audit_raises_when_ledger_and_wallet_diverge(
     db_session: Session,
     user_factory: UserFactory,

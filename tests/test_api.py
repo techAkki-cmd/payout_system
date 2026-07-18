@@ -7,6 +7,106 @@ from app.models import TransactionStatus, TransactionType
 from tests.conftest import SaleFactory, TransactionFactory, UserFactory
 
 
+def test_dashboard_html_is_served(client: TestClient) -> None:
+    # Arrange / Act
+    response = client.get("/")
+
+    # Assert
+    assert response.status_code == 200
+    assert "User Payout Management" in response.text
+    assert "Execute Advance Payout Job" in response.text
+
+
+def test_create_and_fetch_demo_user(client: TestClient) -> None:
+    # Arrange
+    payload = {"username": "creator-alpha"}
+
+    # Act
+    create_response = client.post("/api/v1/users/", json=payload)
+    created_user = create_response.json()
+    fetch_response = client.get(f"/api/v1/users/{created_user['id']}")
+
+    # Assert
+    assert create_response.status_code == 201
+    assert fetch_response.status_code == 200
+    assert fetch_response.json()["username"] == payload["username"]
+    assert fetch_response.json()["withdrawable_balance"] == "0.00"
+
+
+def test_list_transactions_for_user_returns_ledger_rows(
+    client: TestClient,
+    user_factory: UserFactory,
+    transaction_factory: TransactionFactory,
+) -> None:
+    # Arrange
+    user = user_factory(balance=Decimal("25.00"))
+    transaction = transaction_factory(
+        user=user,
+        amount=Decimal("-10.00"),
+        transaction_type=TransactionType.WITHDRAWAL,
+        status=TransactionStatus.INITIATED,
+        reference_id="dashboard-list",
+    )
+
+    # Act
+    response = client.get(f"/api/v1/transactions/{user.id}")
+
+    # Assert
+    assert response.status_code == 200
+    body = response.json()
+    assert body["user_id"] == str(user.id)
+    assert len(body["transactions"]) == 1
+    assert body["transactions"][0]["id"] == str(transaction.id)
+    assert body["transactions"][0]["amount"] == "-10.00"
+
+
+def test_wallet_audit_endpoint_confirms_matching_ledger(
+    client: TestClient,
+    user_factory: UserFactory,
+    transaction_factory: TransactionFactory,
+) -> None:
+    # Arrange
+    user = user_factory(balance=Decimal("40.00"))
+    transaction_factory(
+        user=user,
+        amount=Decimal("40.00"),
+        transaction_type=TransactionType.FINAL_PAYOUT,
+        status=TransactionStatus.SUCCESS,
+    )
+
+    # Act
+    response = client.get(f"/api/v1/audit/wallet/{user.id}")
+
+    # Assert
+    assert response.status_code == 200
+    assert response.json() == {
+        "is_valid": True,
+        "message": "Wallet balance matches the append-only ledger.",
+    }
+
+
+def test_wallet_audit_endpoint_reports_mismatch(
+    client: TestClient,
+    user_factory: UserFactory,
+    transaction_factory: TransactionFactory,
+) -> None:
+    # Arrange
+    user = user_factory(balance=Decimal("25.00"))
+    transaction_factory(
+        user=user,
+        amount=Decimal("40.00"),
+        transaction_type=TransactionType.FINAL_PAYOUT,
+        status=TransactionStatus.SUCCESS,
+    )
+
+    # Act
+    response = client.get(f"/api/v1/audit/wallet/{user.id}")
+
+    # Assert
+    assert response.status_code == 409
+    assert "Critical wallet audit failed" in response.json()["detail"]
+
+
 def test_create_sale_for_existing_user_returns_created_sale(
     client: TestClient,
     user_factory: UserFactory,

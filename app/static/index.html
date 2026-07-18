@@ -34,6 +34,9 @@
           <button id="refreshButton" class="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50">
             Refresh
           </button>
+          <button id="auditButton" class="rounded border border-pine bg-white px-4 py-2 text-sm font-semibold text-pine hover:bg-emerald-50">
+            Validate Wallet Integrity
+          </button>
           <button id="advanceButton" class="rounded bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
             Execute Advance Payout Job
           </button>
@@ -165,6 +168,7 @@
         saleForm: document.querySelector("#saleForm"),
         withdrawalForm: document.querySelector("#withdrawalForm"),
         refreshButton: document.querySelector("#refreshButton"),
+        auditButton: document.querySelector("#auditButton"),
         advanceButton: document.querySelector("#advanceButton"),
         usernameInput: document.querySelector("#usernameInput"),
         userIdInput: document.querySelector("#userIdInput"),
@@ -428,6 +432,16 @@
       elements.refreshButton.addEventListener("click", async () => {
         try {
           await refreshAll(true);
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      });
+
+      elements.auditButton.addEventListener("click", async () => {
+        if (!requireUser()) return;
+        try {
+          const result = await request(`/audit/wallet/${state.user.id}`);
+          toast(`Success: ${result.message}`);
         } catch (error) {
           toast(error.message, "error");
         }

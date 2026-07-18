@@ -4,13 +4,9 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Transaction, TransactionStatus, User
+from app.models import Transaction, User
 
 MONEY_QUANTUM = Decimal("0.01")
-AUDITED_TRANSACTION_STATUSES = (
-    TransactionStatus.INITIATED,
-    TransactionStatus.SUCCESS,
-)
 
 
 def validate_user_wallet_integrity(session: Session, user_id: uuid.UUID) -> bool:
@@ -21,7 +17,6 @@ def validate_user_wallet_integrity(session: Session, user_id: uuid.UUID) -> bool
     ledger_total = session.scalar(
         select(func.coalesce(func.sum(Transaction.amount), Decimal("0.00"))).where(
             Transaction.user_id == user_id,
-            Transaction.status.in_(AUDITED_TRANSACTION_STATUSES),
         )
     )
     ledger_total = Decimal(ledger_total or Decimal("0.00")).quantize(MONEY_QUANTUM)
