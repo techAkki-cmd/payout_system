@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>User Payout Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#17202a",
+              mist: "#eef4f8",
+              pine: "#13715f",
+              coral: "#c94f4f",
+              gold: "#b7791f"
+            }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="bg-mist text-ink antialiased">
+    <div id="toast" class="fixed right-4 top-4 z-50 hidden max-w-sm rounded border bg-white px-4 py-3 text-sm shadow-lg"></div>
+
+    <main class="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
+      <header class="flex flex-col gap-4 border-b border-slate-300 pb-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-wide text-pine">Phase 7 Dashboard</p>
+          <h1 class="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">User Payout Management</h1>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="refreshButton" class="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-slate-50">
+            Refresh
+          </button>
+          <button id="advanceButton" class="rounded bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">
+            Execute Advance Payout Job
+          </button>
+        </div>
+      </header>
+
+      <section class="grid gap-5 lg:grid-cols-[360px_1fr]">
+        <aside class="flex flex-col gap-5">
+          <section class="rounded border border-slate-300 bg-white p-4 shadow-sm">
+            <h2 class="text-lg font-semibold">Creator Wallet</h2>
+            <form id="createUserForm" class="mt-4 grid gap-3">
+              <label class="grid gap-1 text-sm font-medium">
+                Demo username
+                <input id="usernameInput" required maxlength="255" class="rounded border border-slate-300 px-3 py-2 font-normal outline-none focus:border-pine" placeholder="creator-alpha" />
+              </label>
+              <button class="rounded bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Create Demo User</button>
+            </form>
+
+            <form id="loadUserForm" class="mt-4 grid gap-3 border-t border-slate-200 pt-4">
+              <label class="grid gap-1 text-sm font-medium">
+                Existing user ID
+                <input id="userIdInput" class="rounded border border-slate-300 px-3 py-2 font-mono text-xs font-normal outline-none focus:border-pine" placeholder="paste UUID" />
+              </label>
+              <button class="rounded border border-slate-300 px-4 py-2 text-sm font-semibold hover:bg-slate-50">Load User</button>
+            </form>
+
+            <div class="mt-5 grid gap-3 rounded bg-slate-50 p-3 text-sm">
+              <div>
+                <p class="text-xs uppercase tracking-wide text-slate-500">User ID</p>
+                <p id="walletUserId" class="break-all font-mono text-xs">No user selected</p>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-slate-500">Balance</p>
+                  <p id="walletBalance" class="text-2xl font-semibold">$0.00</p>
+                </div>
+                <div>
+                  <p class="text-xs uppercase tracking-wide text-slate-500">Withdrawal</p>
+                  <p id="walletLock" class="text-sm font-semibold text-slate-600">Unavailable</p>
+                </div>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wide text-slate-500">Last withdrawal</p>
+                <p id="lastWithdrawal" class="text-sm">Never</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="rounded border border-slate-300 bg-white p-4 shadow-sm">
+            <h2 class="text-lg font-semibold">Withdrawal</h2>
+            <form id="withdrawalForm" class="mt-4 grid gap-3">
+              <label class="grid gap-1 text-sm font-medium">
+                Amount
+                <input id="withdrawalAmountInput" required min="0.01" step="0.01" type="number" class="rounded border border-slate-300 px-3 py-2 font-normal outline-none focus:border-pine" placeholder="25.00" />
+              </label>
+              <button class="rounded bg-pine px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800">Withdraw</button>
+            </form>
+          </section>
+        </aside>
+
+        <div class="flex flex-col gap-5">
+          <section class="rounded border border-slate-300 bg-white p-4 shadow-sm">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 class="text-lg font-semibold">Sales Ledger & Ingestion</h2>
+              <div id="salesCounts" class="flex flex-wrap gap-2 text-xs font-semibold"></div>
+            </div>
+            <form id="saleForm" class="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto] md:items-end">
+              <label class="grid gap-1 text-sm font-medium">
+                Brand
+                <input id="brandInput" required maxlength="255" class="rounded border border-slate-300 px-3 py-2 font-normal outline-none focus:border-pine" placeholder="Acme Brand" />
+              </label>
+              <label class="grid gap-1 text-sm font-medium">
+                Earnings
+                <input id="earningsInput" required min="0.01" step="0.01" type="number" class="rounded border border-slate-300 px-3 py-2 font-normal outline-none focus:border-pine" placeholder="100.00" />
+              </label>
+              <button class="rounded bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">Add Sale</button>
+            </form>
+            <div class="mt-4 overflow-x-auto">
+              <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+                <thead>
+                  <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                    <th class="py-3 pr-3">Brand</th>
+                    <th class="py-3 pr-3">Status</th>
+                    <th class="py-3 pr-3">Earnings</th>
+                    <th class="py-3 pr-3">Advance</th>
+                    <th class="py-3 pr-3">Processed</th>
+                    <th class="py-3 pr-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="salesTable"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="rounded border border-slate-300 bg-white p-4 shadow-sm">
+            <h2 class="text-lg font-semibold">Withdrawal Failure Simulation</h2>
+            <div class="mt-4 overflow-x-auto">
+              <table class="w-full min-w-[760px] border-collapse text-left text-sm">
+                <thead>
+                  <tr class="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                    <th class="py-3 pr-3">Transaction</th>
+                    <th class="py-3 pr-3">Type</th>
+                    <th class="py-3 pr-3">Status</th>
+                    <th class="py-3 pr-3">Amount</th>
+                    <th class="py-3 pr-3">Created</th>
+                    <th class="py-3 pr-3 text-right">Recovery</th>
+                  </tr>
+                </thead>
+                <tbody id="transactionsTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const apiBase = "/api/v1";
+      const state = {
+        user: null,
+        sales: [],
+        transactions: []
+      };
+
+      const elements = {
+        toast: document.querySelector("#toast"),
+        createUserForm: document.querySelector("#createUserForm"),
+        loadUserForm: document.querySelector("#loadUserForm"),
+        saleForm: document.querySelector("#saleForm"),
+        withdrawalForm: document.querySelector("#withdrawalForm"),
+        refreshButton: document.querySelector("#refreshButton"),
+        advanceButton: document.querySelector("#advanceButton"),
+        usernameInput: document.querySelector("#usernameInput"),
+        userIdInput: document.querySelector("#userIdInput"),
+        brandInput: document.querySelector("#brandInput"),
+        earningsInput: document.querySelector("#earningsInput"),
+        withdrawalAmountInput: document.querySelector("#withdrawalAmountInput"),
+        walletUserId: document.querySelector("#walletUserId"),
+        walletBalance: document.querySelector("#walletBalance"),
+        walletLock: document.querySelector("#walletLock"),
+        lastWithdrawal: document.querySelector("#lastWithdrawal"),
+        salesCounts: document.querySelector("#salesCounts"),
+        salesTable: document.querySelector("#salesTable"),
+        transactionsTable: document.querySelector("#transactionsTable")
+      };
+
+      function money(value) {
+        return new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD"
+        }).format(Number(value || 0));
+      }
+
+      function formatTime(value) {
+        return value ? new Date(value).toLocaleString() : "Never";
+      }
+
+      function statusBadge(status) {
+        const classes = {
+          PENDING: "bg-amber-100 text-amber-800",
+          APPROVED: "bg-emerald-100 text-emerald-800",
+          REJECTED: "bg-red-100 text-red-800",
+          INITIATED: "bg-sky-100 text-sky-800",
+          SUCCESS: "bg-emerald-100 text-emerald-800",
+          FAILED: "bg-red-100 text-red-800",
+          CANCELLED: "bg-slate-200 text-slate-700"
+        };
+        return `<span class="rounded px-2 py-1 text-xs font-semibold ${classes[status] || "bg-slate-100 text-slate-700"}">${status}</span>`;
+      }
+
+      function toast(message, tone = "success") {
+        const toneClasses = tone === "error"
+          ? "border-red-200 text-red-900"
+          : "border-emerald-200 text-emerald-900";
+        elements.toast.className = `fixed right-4 top-4 z-50 max-w-sm rounded border bg-white px-4 py-3 text-sm shadow-lg ${toneClasses}`;
+        elements.toast.textContent = message;
+        window.clearTimeout(elements.toastTimer);
+        elements.toastTimer = window.setTimeout(() => {
+          elements.toast.classList.add("hidden");
+        }, 3600);
+      }
+
+      async function request(path, options = {}) {
+        const response = await fetch(`${apiBase}${path}`, {
+          headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+          ...options
+        });
+        const contentType = response.headers.get("content-type") || "";
+        const body = contentType.includes("application/json") ? await response.json() : null;
+        if (!response.ok) {
+          throw new Error(body?.detail || "Request failed.");
+        }
+        return body;
+      }
+
+      function requireUser() {
+        if (!state.user) {
+          toast("Create or load a user first.", "error");
+          return false;
+        }
+        return true;
+      }
+
+      async function refreshAll(showToast = false) {
+        if (!state.user) {
+          render();
+          return;
+        }
+        const userId = state.user.id;
+        const [user, sales, transactions] = await Promise.all([
+          request(`/users/${userId}`),
+          request(`/sales/${userId}`),
+          request(`/transactions/${userId}`)
+        ]);
+        state.user = user;
+        state.sales = sales.sales;
+        state.transactions = transactions.transactions;
+        render();
+        if (showToast) {
+          toast("Dashboard refreshed.");
+        }
+      }
+
+      function renderWallet() {
+        const user = state.user;
+        elements.walletUserId.textContent = user?.id || "No user selected";
+        elements.walletBalance.textContent = money(user?.withdrawable_balance || "0.00");
+        elements.lastWithdrawal.textContent = formatTime(user?.last_withdrawal_at);
+
+        if (!user) {
+          elements.walletLock.textContent = "Unavailable";
+          elements.walletLock.className = "text-sm font-semibold text-slate-600";
+          return;
+        }
+
+        if (!user.last_withdrawal_at) {
+          elements.walletLock.textContent = "Eligible now";
+          elements.walletLock.className = "text-sm font-semibold text-pine";
+          return;
+        }
+
+        const nextWithdrawal = new Date(user.last_withdrawal_at);
+        nextWithdrawal.setHours(nextWithdrawal.getHours() + 24);
+        if (Date.now() >= nextWithdrawal.getTime()) {
+          elements.walletLock.textContent = "Eligible now";
+          elements.walletLock.className = "text-sm font-semibold text-pine";
+        } else {
+          elements.walletLock.textContent = `Locked until ${formatTime(nextWithdrawal)}`;
+          elements.walletLock.className = "text-sm font-semibold text-gold";
+        }
+      }
+
+      function renderSales() {
+        const counts = state.sales.reduce((acc, sale) => {
+          acc[sale.status] = (acc[sale.status] || 0) + 1;
+          return acc;
+        }, {});
+        elements.salesCounts.innerHTML = ["PENDING", "APPROVED", "REJECTED"]
+          .map((status) => `<span class="rounded bg-slate-100 px-2 py-1">${status}: ${counts[status] || 0}</span>`)
+          .join("");
+
+        if (!state.sales.length) {
+          elements.salesTable.innerHTML = `
+            <tr>
+              <td colspan="6" class="py-8 text-center text-slate-500">No sales yet. Add one, then run the advance payout job.</td>
+            </tr>`;
+          return;
+        }
+
+        elements.salesTable.innerHTML = state.sales.map((sale) => {
+          const actions = sale.status === "PENDING"
+            ? `<div class="flex justify-end gap-2">
+                <button data-action="approve-sale" data-id="${sale.id}" class="rounded bg-pine px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800">Approve</button>
+                <button data-action="reject-sale" data-id="${sale.id}" class="rounded bg-coral px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700">Reject</button>
+              </div>`
+            : `<span class="text-xs text-slate-500">Settled</span>`;
+          return `
+            <tr class="border-b border-slate-100">
+              <td class="py-3 pr-3 font-medium">${sale.brand_name}</td>
+              <td class="py-3 pr-3">${statusBadge(sale.status)}</td>
+              <td class="py-3 pr-3">${money(sale.earnings)}</td>
+              <td class="py-3 pr-3">${money(sale.advance_paid)}</td>
+              <td class="py-3 pr-3">${sale.is_advance_processed ? "Yes" : "No"}</td>
+              <td class="py-3 pr-3 text-right">${actions}</td>
+            </tr>`;
+        }).join("");
+      }
+
+      function renderTransactions() {
+        const withdrawals = state.transactions.filter((transaction) => transaction.type === "WITHDRAWAL");
+        if (!withdrawals.length) {
+          elements.transactionsTable.innerHTML = `
+            <tr>
+              <td colspan="6" class="py-8 text-center text-slate-500">No withdrawal ledger rows yet.</td>
+            </tr>`;
+          return;
+        }
+
+        elements.transactionsTable.innerHTML = withdrawals.map((transaction) => {
+          const canRecover = transaction.status === "INITIATED";
+          const recoveryAction = canRecover
+            ? `<button data-action="fail-withdrawal" data-id="${transaction.id}" class="rounded border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Simulate Bank/Gateway Failure</button>`
+            : `<span class="text-xs text-slate-500">No action</span>`;
+          return `
+            <tr class="border-b border-slate-100">
+              <td class="py-3 pr-3 font-mono text-xs">${transaction.id}</td>
+              <td class="py-3 pr-3">${transaction.type}</td>
+              <td class="py-3 pr-3">${statusBadge(transaction.status)}</td>
+              <td class="py-3 pr-3">${money(transaction.amount)}</td>
+              <td class="py-3 pr-3">${formatTime(transaction.created_at)}</td>
+              <td class="py-3 pr-3 text-right">${recoveryAction}</td>
+            </tr>`;
+        }).join("");
+      }
+
+      function render() {
+        renderWallet();
+        renderSales();
+        renderTransactions();
+      }
+
+      elements.createUserForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+          const user = await request("/users/", {
+            method: "POST",
+            body: JSON.stringify({ username: elements.usernameInput.value.trim() })
+          });
+          state.user = user;
+          elements.userIdInput.value = user.id;
+          elements.usernameInput.value = "";
+          await refreshAll();
+          toast("Success: Demo creator wallet created.");
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      });
+
+      elements.loadUserForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+          state.user = { id: elements.userIdInput.value.trim() };
+          await refreshAll();
+          toast("Success: Creator wallet loaded.");
+        } catch (error) {
+          state.user = null;
+          render();
+          toast(error.message, "error");
+        }
+      });
+
+      elements.saleForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!requireUser()) return;
+        try {
+          await request("/sales/", {
+            method: "POST",
+            body: JSON.stringify({
+              user_id: state.user.id,
+              brand_name: elements.brandInput.value.trim(),
+              earnings: Number(elements.earningsInput.value).toFixed(2)
+            })
+          });
+          elements.brandInput.value = "";
+          elements.earningsInput.value = "";
+          await refreshAll();
+          toast("Success: Pending sale ingested.");
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      });
+
+      elements.withdrawalForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!requireUser()) return;
+        try {
+          await request("/withdrawals/", {
+            method: "POST",
+            body: JSON.stringify({
+              user_id: state.user.id,
+              amount: Number(elements.withdrawalAmountInput.value).toFixed(2),
+              reference_id: `dashboard-withdrawal-${crypto.randomUUID()}`
+            })
+          });
+          elements.withdrawalAmountInput.value = "";
+          await refreshAll();
+          toast("Success: Withdrawal initiated and wallet debited.");
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      });
+
+      elements.refreshButton.addEventListener("click", async () => {
+        try {
+          await refreshAll(true);
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      });
+
+      elements.advanceButton.addEventListener("click", async () => {
+        if (!requireUser()) return;
+        try {
+          const result = await request("/payouts/advance/trigger", { method: "POST" });
+          await refreshAll();
+          toast(`Success: Advance worker processed ${result.processed_count} sale(s).`);
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      });
+
+      document.addEventListener("click", async (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+
+        const { action, id } = button.dataset;
+        try {
+          if (action === "approve-sale" || action === "reject-sale") {
+            const status = action === "approve-sale" ? "APPROVED" : "REJECTED";
+            await request(`/reconciliation/${id}`, {
+              method: "POST",
+              body: JSON.stringify({ status })
+            });
+            await refreshAll();
+            toast(`Success: Sale reconciled as ${status}.`);
+          }
+
+          if (action === "fail-withdrawal") {
+            await request("/webhooks/withdrawals/failed", {
+              method: "POST",
+              body: JSON.stringify({ transaction_id: id })
+            });
+            await refreshAll();
+            toast("Success: Gateway failure recovered back to wallet.");
+          }
+        } catch (error) {
+          toast(error.message, "error");
+        }
+      });
+
+      render();
+    </script>
+  </body>
+</html>
