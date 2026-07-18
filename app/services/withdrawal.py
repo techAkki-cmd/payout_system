@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from threading import Lock
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -11,6 +12,8 @@ from app.models import Transaction, TransactionStatus, TransactionType, User
 
 MONEY_QUANTUM = Decimal("0.01")
 WITHDRAWAL_LOCK_PERIOD = timedelta(hours=24)
+_wallet_lock_registry: dict[uuid.UUID, Lock] = {}
+_wallet_lock_registry_guard = Lock()
 
 
 def withdraw(
@@ -19,6 +22,13 @@ def withdraw(
     amount: Decimal,
     reference_id: str | None = None,
 ) -> Transaction:
+    wallet_lock = get_wallet_lock(user_id)
+    if not wallet_lock.acquire(blocking=False):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User wallet is busy; retry shortly.",
+        )
+
     try:
         withdrawal_amount = amount.quantize(MONEY_QUANTUM)
         if withdrawal_amount <= Decimal("0.00"):
@@ -74,6 +84,8 @@ def withdraw(
     except Exception:
         session.rollback()
         raise
+    finally:
+        wallet_lock.release()
 
 
 def is_lock_error(exc: DBAPIError) -> bool:
@@ -87,3 +99,10 @@ def is_lock_error(exc: DBAPIError) -> bool:
             "nowait",
         )
     )
+
+
+def get_wallet_lock(user_id: uuid.UUID) -> Lock:
+    with _wallet_lock_registry_guard:
+        if user_id not in _wallet_lock_registry:
+            _wallet_lock_registry[user_id] = Lock()
+        return _wallet_lock_registry[user_id]
