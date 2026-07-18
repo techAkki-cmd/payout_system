@@ -43,6 +43,10 @@
         </div>
       </header>
 
+      <div id="demoFlowHint" class="hidden rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900">
+        Demo flow: Add a sale -> Run advance payout -> Approve/reject -> Withdraw -> Simulate failure
+      </div>
+
       <section class="grid gap-5 lg:grid-cols-[360px_1fr]">
         <aside class="flex flex-col gap-5">
           <section class="rounded border border-slate-300 bg-white p-4 shadow-sm">
@@ -170,6 +174,7 @@
         refreshButton: document.querySelector("#refreshButton"),
         auditButton: document.querySelector("#auditButton"),
         advanceButton: document.querySelector("#advanceButton"),
+        demoFlowHint: document.querySelector("#demoFlowHint"),
         usernameInput: document.querySelector("#usernameInput"),
         userIdInput: document.querySelector("#userIdInput"),
         brandInput: document.querySelector("#brandInput"),
@@ -284,6 +289,7 @@
 
       function renderWallet() {
         const user = state.user;
+        elements.demoFlowHint.classList.toggle("hidden", !user);
         elements.walletUserId.textContent = user?.id || "No user selected";
         elements.walletBalance.textContent = money(user?.withdrawable_balance || "0.00");
         elements.lastWithdrawal.textContent = formatTime(user?.last_withdrawal_at);
