@@ -31,6 +31,7 @@ services:
       POSTGRES_PORT: 5432
       BACKEND_CORS_ORIGINS: '["http://localhost","http://localhost:3000","http://localhost:8000"]'
       ENVIRONMENT: local
+      AUTO_CREATE_TABLES: "true"
     ports:
       - "8000:8000"
     volumes:

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     ]
 
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
+    AUTO_CREATE_TABLES: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

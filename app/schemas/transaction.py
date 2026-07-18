@@ -19,3 +19,8 @@ class TransactionResponse(BaseModel):
     reference_id: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class TransactionListResponse(BaseModel):
+    user_id: uuid.UUID
+    transactions: list[TransactionResponse]
