@@ -136,7 +136,15 @@
           </section>
 
           <section class="rounded border border-slate-300 bg-white p-4 shadow-sm">
-            <h2 class="text-lg font-semibold">Withdrawal Failure Simulation</h2>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 class="text-lg font-semibold">Withdrawal Failure Simulation</h2>
+              <div id="transactionFilters" class="flex flex-wrap gap-1 rounded bg-slate-100 p-1 text-xs font-semibold">
+                <button data-filter="all" class="rounded px-3 py-1.5">All</button>
+                <button data-filter="withdrawals" class="rounded px-3 py-1.5">Withdrawals</button>
+                <button data-filter="recoveries" class="rounded px-3 py-1.5">Recoveries</button>
+                <button data-filter="payouts" class="rounded px-3 py-1.5">Payouts</button>
+              </div>
+            </div>
             <div class="mt-4 overflow-x-auto">
               <table class="w-full min-w-[760px] border-collapse text-left text-sm">
                 <thead>
@@ -162,7 +170,8 @@
       const state = {
         user: null,
         sales: [],
-        transactions: []
+        transactions: [],
+        transactionFilter: "all"
       };
 
       const elements = {
@@ -186,6 +195,7 @@
         lastWithdrawal: document.querySelector("#lastWithdrawal"),
         salesCounts: document.querySelector("#salesCounts"),
         salesTable: document.querySelector("#salesTable"),
+        transactionFilters: document.querySelector("#transactionFilters"),
         transactionsTable: document.querySelector("#transactionsTable")
       };
 
@@ -354,15 +364,35 @@
       }
 
       function renderTransactions() {
-        if (!state.transactions.length) {
+        const filteredTransactions = state.transactions.filter((transaction) => {
+          if (state.transactionFilter === "withdrawals") {
+            return transaction.type === "WITHDRAWAL";
+          }
+          if (state.transactionFilter === "recoveries") {
+            return transaction.type === "FAILED_RECOVERY";
+          }
+          if (state.transactionFilter === "payouts") {
+            return transaction.type === "ADVANCE_PAYOUT" || transaction.type === "FINAL_PAYOUT";
+          }
+          return true;
+        });
+
+        elements.transactionFilters.querySelectorAll("button").forEach((button) => {
+          const isActive = button.dataset.filter === state.transactionFilter;
+          button.className = isActive
+            ? "rounded bg-white px-3 py-1.5 text-ink shadow-sm"
+            : "rounded px-3 py-1.5 text-slate-600 hover:bg-white";
+        });
+
+        if (!filteredTransactions.length) {
           elements.transactionsTable.innerHTML = `
             <tr>
-              <td colspan="6" class="py-8 text-center text-slate-500">No ledger rows yet.</td>
+              <td colspan="6" class="py-8 text-center text-slate-500">No matching ledger rows yet.</td>
             </tr>`;
           return;
         }
 
-        elements.transactionsTable.innerHTML = state.transactions.map((transaction) => {
+        elements.transactionsTable.innerHTML = filteredTransactions.map((transaction) => {
           const canRecover = transaction.type === "WITHDRAWAL" && transaction.status === "INITIATED";
           const recoveryAction = canRecover
             ? `<button data-action="fail-withdrawal" data-id="${transaction.id}" class="rounded border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Simulate Bank/Gateway Failure</button>`
@@ -497,6 +527,14 @@
             toast(error.message, "error");
           }
         });
+      });
+
+      elements.transactionFilters.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-filter]");
+        if (!button) return;
+
+        state.transactionFilter = button.dataset.filter;
+        renderTransactions();
       });
 
       document.addEventListener("click", async (event) => {
