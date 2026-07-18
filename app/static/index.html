@@ -220,6 +220,27 @@
         }, 3600);
       }
 
+      async function withButtonLoading(button, action) {
+        if (!button) {
+          await action();
+          return;
+        }
+        if (button.disabled) return;
+
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Processing...";
+        button.classList.add("cursor-not-allowed", "opacity-60");
+
+        try {
+          await action();
+        } finally {
+          button.disabled = false;
+          button.textContent = originalText;
+          button.classList.remove("cursor-not-allowed", "opacity-60");
+        }
+      }
+
       async function request(path, options = {}) {
         const response = await fetch(`${apiBase}${path}`, {
           headers: { "Content-Type": "application/json", ...(options.headers || {}) },
@@ -360,102 +381,116 @@
 
       elements.createUserForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        try {
-          const user = await request("/users/", {
-            method: "POST",
-            body: JSON.stringify({ username: elements.usernameInput.value.trim() })
-          });
-          state.user = user;
-          elements.userIdInput.value = user.id;
-          elements.usernameInput.value = "";
-          await refreshAll();
-          toast("Success: Demo creator wallet created.");
-        } catch (error) {
-          toast(error.message, "error");
-        }
+        await withButtonLoading(event.submitter, async () => {
+          try {
+            const user = await request("/users/", {
+              method: "POST",
+              body: JSON.stringify({ username: elements.usernameInput.value.trim() })
+            });
+            state.user = user;
+            elements.userIdInput.value = user.id;
+            elements.usernameInput.value = "";
+            await refreshAll();
+            toast("Success: Demo creator wallet created.");
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
       });
 
       elements.loadUserForm.addEventListener("submit", async (event) => {
         event.preventDefault();
-        try {
-          state.user = { id: elements.userIdInput.value.trim() };
-          await refreshAll();
-          toast("Success: Creator wallet loaded.");
-        } catch (error) {
-          state.user = null;
-          render();
-          toast(error.message, "error");
-        }
+        await withButtonLoading(event.submitter, async () => {
+          try {
+            state.user = { id: elements.userIdInput.value.trim() };
+            await refreshAll();
+            toast("Success: Creator wallet loaded.");
+          } catch (error) {
+            state.user = null;
+            render();
+            toast(error.message, "error");
+          }
+        });
       });
 
       elements.saleForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!requireUser()) return;
-        try {
-          await request("/sales/", {
-            method: "POST",
-            body: JSON.stringify({
-              user_id: state.user.id,
-              brand_name: elements.brandInput.value.trim(),
-              earnings: Number(elements.earningsInput.value).toFixed(2)
-            })
-          });
-          elements.brandInput.value = "";
-          elements.earningsInput.value = "";
-          await refreshAll();
-          toast("Success: Pending sale ingested.");
-        } catch (error) {
-          toast(error.message, "error");
-        }
+        await withButtonLoading(event.submitter, async () => {
+          try {
+            await request("/sales/", {
+              method: "POST",
+              body: JSON.stringify({
+                user_id: state.user.id,
+                brand_name: elements.brandInput.value.trim(),
+                earnings: Number(elements.earningsInput.value).toFixed(2)
+              })
+            });
+            elements.brandInput.value = "";
+            elements.earningsInput.value = "";
+            await refreshAll();
+            toast("Success: Pending sale ingested.");
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
       });
 
       elements.withdrawalForm.addEventListener("submit", async (event) => {
         event.preventDefault();
         if (!requireUser()) return;
-        try {
-          await request("/withdrawals/", {
-            method: "POST",
-            body: JSON.stringify({
-              user_id: state.user.id,
-              amount: Number(elements.withdrawalAmountInput.value).toFixed(2),
-              reference_id: `dashboard-withdrawal-${crypto.randomUUID()}`
-            })
-          });
-          elements.withdrawalAmountInput.value = "";
-          await refreshAll();
-          toast("Success: Withdrawal initiated and wallet debited.");
-        } catch (error) {
-          toast(error.message, "error");
-        }
+        await withButtonLoading(event.submitter, async () => {
+          try {
+            await request("/withdrawals/", {
+              method: "POST",
+              body: JSON.stringify({
+                user_id: state.user.id,
+                amount: Number(elements.withdrawalAmountInput.value).toFixed(2),
+                reference_id: `dashboard-withdrawal-${crypto.randomUUID()}`
+              })
+            });
+            elements.withdrawalAmountInput.value = "";
+            await refreshAll();
+            toast("Success: Withdrawal initiated and wallet debited.");
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
       });
 
       elements.refreshButton.addEventListener("click", async () => {
-        try {
-          await refreshAll(true);
-        } catch (error) {
-          toast(error.message, "error");
-        }
+        await withButtonLoading(elements.refreshButton, async () => {
+          try {
+            await refreshAll(true);
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
       });
 
       elements.auditButton.addEventListener("click", async () => {
         if (!requireUser()) return;
-        try {
-          const result = await request(`/audit/wallet/${state.user.id}`);
-          toast(`Success: ${result.message}`);
-        } catch (error) {
-          toast(error.message, "error");
-        }
+        await withButtonLoading(elements.auditButton, async () => {
+          try {
+            const result = await request(`/audit/wallet/${state.user.id}`);
+            toast(`Success: ${result.message}`);
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
       });
 
       elements.advanceButton.addEventListener("click", async () => {
         if (!requireUser()) return;
-        try {
-          const result = await request("/payouts/advance/trigger", { method: "POST" });
-          await refreshAll();
-          toast(`Success: Advance worker processed ${result.processed_count} sale(s).`);
-        } catch (error) {
-          toast(error.message, "error");
-        }
+        await withButtonLoading(elements.advanceButton, async () => {
+          try {
+            const result = await request("/payouts/advance/trigger", { method: "POST" });
+            await refreshAll();
+            toast(`Success: Advance worker processed ${result.processed_count} sale(s).`);
+          } catch (error) {
+            toast(error.message, "error");
+          }
+        });
       });
 
       document.addEventListener("click", async (event) => {
@@ -463,28 +498,30 @@
         if (!button) return;
 
         const { action, id } = button.dataset;
-        try {
-          if (action === "approve-sale" || action === "reject-sale") {
-            const status = action === "approve-sale" ? "APPROVED" : "REJECTED";
-            await request(`/reconciliation/${id}`, {
-              method: "POST",
-              body: JSON.stringify({ status })
-            });
-            await refreshAll();
-            toast(`Success: Sale reconciled as ${status}.`);
-          }
+        await withButtonLoading(button, async () => {
+          try {
+            if (action === "approve-sale" || action === "reject-sale") {
+              const status = action === "approve-sale" ? "APPROVED" : "REJECTED";
+              await request(`/reconciliation/${id}`, {
+                method: "POST",
+                body: JSON.stringify({ status })
+              });
+              await refreshAll();
+              toast(`Success: Sale reconciled as ${status}.`);
+            }
 
-          if (action === "fail-withdrawal") {
-            await request("/webhooks/withdrawals/failed", {
-              method: "POST",
-              body: JSON.stringify({ transaction_id: id })
-            });
-            await refreshAll();
-            toast("Success: Gateway failure recovered back to wallet.");
+            if (action === "fail-withdrawal") {
+              await request("/webhooks/withdrawals/failed", {
+                method: "POST",
+                body: JSON.stringify({ transaction_id: id })
+              });
+              await refreshAll();
+              toast("Success: Gateway failure recovered back to wallet.");
+            }
+          } catch (error) {
+            toast(error.message, "error");
           }
-        } catch (error) {
-          toast(error.message, "error");
-        }
+        });
       });
 
       render();
